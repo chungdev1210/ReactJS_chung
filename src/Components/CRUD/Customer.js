@@ -394,7 +394,7 @@ export class Customer extends Component {
 
     .then((result) => {
         if (result.isConfirmed) {
-            Swal.fire('Xoá thành công!')
+            Swal.fire('Xoá thành công!!!!')
         }
 
         fetch(this.customerApi + '/' + id, {
