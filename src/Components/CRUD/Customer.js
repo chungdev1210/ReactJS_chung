@@ -229,7 +229,7 @@ export class Customer extends Component {
         };
 
         if (name === "") {
-            errors.name.required = "Vui lòng nhập tên";
+            errors.name.required = "Vui lòng nhập tên !!!";
         } else if (name.length < 5) {
             errors.name.min = "Tên phải từ 5 ký tự trở lên";
         }
