@@ -465,7 +465,7 @@ export class Customer extends Component {
                 <h1 className="page-title text-center">Danh sách khách hàng</h1>
 
                 <a href="#" className="btn btn-primary" onClick={this.openModalAdd}>
-                    Thêm mới
+                    Thêm mới +
                 </a>
                 <hr />
                 <form onSubmit={this.handleFilter}>
