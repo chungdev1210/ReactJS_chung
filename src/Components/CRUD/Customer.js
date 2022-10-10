@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { Component, createRef } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Customer.scss";
 import config from "../../config.json";
@@ -7,6 +7,8 @@ import Modal from "react-bootstrap/Modal";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Swal from 'sweetalert2'
+import Color from "../HOC/Color";
+
 
 export class Customer extends Component {
     constructor(props) {
@@ -41,8 +43,13 @@ export class Customer extends Component {
                 status: {},
             },
 
-            currentId: 0
+            currentId: 0,
+            deleteCount: 0,
+            currentIdChecked: []
+
         };
+        this.checkAllRef = createRef();
+        this.checkItemRef = [];
 
         this.customerApi = config.SERVER_API + "/customers";
         this.perPage = config.PER_PAGE;
@@ -277,23 +284,23 @@ export class Customer extends Component {
                         }
                     });
             } else {
-                const  {currentId } = this.state;
+                const { currentId } = this.state;
                 this.client
-                .put(this.customerApi, {
-                    name: name,
-                    email: email,
-                    phone: phone,
-                    status: status,
-                }, currentId)
-                .then((response) => response.json())
-                .then((response) => {
-                    if (response !== "") {
-                        toast.success("Sửa khách hàng thành công");
-                        this.resetForm();
-                        this.getCustomers();
-                        this.closeModalAdd();
-                    }
-                });
+                    .put(this.customerApi, {
+                        name: name,
+                        email: email,
+                        phone: phone,
+                        status: status,
+                    }, currentId)
+                    .then((response) => response.json())
+                    .then((response) => {
+                        if (response !== "") {
+                            toast.success("Sửa khách hàng thành công");
+                            this.resetForm();
+                            this.getCustomers();
+                            this.closeModalAdd();
+                        }
+                    });
             }
         }
     };
@@ -359,7 +366,7 @@ export class Customer extends Component {
             default:
                 break;
         }
-    };
+    }
 
     handleGetCustomer = (customerId) => {
         const customerDetailApi = this.customerApi + "/" + customerId;
@@ -377,41 +384,97 @@ export class Customer extends Component {
 
 
     handleDeleteCtm = (id) => {
-    // if (window.confirm("Bạn có chắc chắn muốn xoá không?")) {
-    //     fetch(this.customerApi + '/' + id, {
-    //         method: 'DELETE'
-    //     })
-    //     .then(response => response.json())
-    //     .then(this.getCustomers())
-    // }
+        // if (window.confirm("Bạn có chắc chắn muốn xoá không?")) {
+        //     fetch(this.customerApi + '/' + id, {
+        //         method: 'DELETE'
+        //     })
+        //     .then(response => response.json())
+        //     .then(this.getCustomers())
+        // }
 
-    Swal.fire({
-        title: 'Bạn có chắc chắn  muốn xoá không?',
-        showDenyButton: false,
-        showCancelButton: true,
-        confirmButtonText: 'Xoá'
-    })
+        Swal.fire({
+            title: 'Bạn có chắc chắn  muốn xoá không?',
+            showDenyButton: false,
+            showCancelButton: true,
+            confirmButtonText: 'Xoá'
+        })
 
-    .then((result) => {
-        if (result.isConfirmed) {
-            Swal.fire('Xoá thành công!!!!')
+            .then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire('Xoá thành công!')
+                }
+
+                fetch(this.customerApi + '/' + id, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                this.getCustomers()
+            })
+    }
+
+    handleCheckAll = (e) => {
+        const checkAllStatus = e.target.checked;
+
+        this.checkItemRef.forEach(checkItem => {
+            checkItem.current.checked = checkAllStatus;
+        })
+
+        this.setState({
+            deleteCount: checkAllStatus ? this.checkItemRef.length : 0
+        })
+    }
+
+    handleCheckItem = (e) => {
+
+        let checkItemStatus = e.target.checked;
+
+        if (!checkItemStatus) {
+            this.checkAllRef.current.checked = false;
+            this.setState({
+                deleteCount: this.state.deleteCount - 1
+            })
+            return; //Thoát hàm
+        }
+        this.setState({
+            deleteCount: this.state.deleteCount + 1
+        })
+
+        const status = this.checkItemRef.every(checkItem => {
+            if (checkItem.current.checked) {
+                return checkItem.current.checked;
+            }
+            return false;
+        });
+
+        this.checkAllRef.current.checked = status;
+
+        checkItemStatus = e.target.value;
+
+        this.state.currentIdChecked.push(checkItemStatus);
+    }
+        
+    deleteChecked = () => {
+        const {currentIdChecked} = this.state;
+
+        for (let i = 0; i < currentIdChecked.length; i++) {
+            fetch(this.customerApi + '/' + currentIdChecked[i], {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            this.getCustomers();
+            toast.success("Xoá khách hàng thành công");
         }
 
-        fetch(this.customerApi + '/' + id, {
-            method: 'DELETE'
-        })
-        .then(response => response.json())
-    
-        .then(this.getCustomers())
-    })
- 
-}
+    }
 
     render() {
-        // console.log("re-render 2");
-        const { customers, modal, form, errors, currentId } = this.state;
-
+        
+        const { customers, modal, form, errors, currentId, deleteCount, currentIdChecked } = this.state;
+        // console.log(currentIdChecked)
         const { name, email, phone, status } = form;
+        this.checkItemRef = [];
+        const disabled = { disabled: deleteCount > 0 ? false : true }
+        
 
         const jsx = customers.map(({ id, name, email, phone, status }, index) => {
             const statusBtn = status ? (
@@ -438,18 +501,19 @@ export class Customer extends Component {
             );
 
             const deleteBtn = (
-                <a 
-                onClick={e => {
-                e.preventDefault()
-                this.handleDeleteCtm(id)}}
-                href="#" className="btn btn-danger">
+                <a
+                    onClick={e => {
+                        e.preventDefault()
+                        this.handleDeleteCtm(id)
+                    }}
+                    href="#" className="btn btn-danger">
                     Xoá
                 </a>
             );
-
+            this.checkItemRef.push(createRef());
             return (
                 <tr key={id}>
-                    <td>{index + 1}</td>
+                    <td><input  ref={this.checkItemRef[index]} type={"checkbox"} onChange={this.handleCheckItem} value={id}></input></td>
                     <td>{name}</td>
                     <td>{email}</td>
                     <td>{phone}</td>
@@ -465,7 +529,7 @@ export class Customer extends Component {
                 <h1 className="page-title text-center">Danh sách khách hàng</h1>
 
                 <a href="#" className="btn btn-primary" onClick={this.openModalAdd}>
-                    Thêm mới +
+                    Thêm mới
                 </a>
                 <hr />
                 <form onSubmit={this.handleFilter}>
@@ -503,7 +567,7 @@ export class Customer extends Component {
                 <table className="table table-bordered">
                     <thead>
                         <tr>
-                            <th width="5%">STT</th>
+                            <th width="5%"><input type='checkbox' ref={this.checkAllRef} onChange={this.handleCheckAll}></input></th>
                             <th>Tên</th>
                             <th>Email</th>
                             <th>Điện thoại</th>
@@ -514,6 +578,7 @@ export class Customer extends Component {
                     </thead>
                     <tbody>{jsx}</tbody>
                 </table>
+                <button type="button" onClick={this.deleteChecked} className="btn btn-danger" {...disabled}>Xoá đã chọn ({deleteCount})</button>
                 {this.renderPaginate()}
                 <div onKeyUp={this.handleKeyboardSave}>
                     <Modal
@@ -614,10 +679,10 @@ export class Customer extends Component {
                                         </div>
                                     ) : null}
                                 </div>
-                                <button 
-                                    type="submit" 
+                                <button
+                                    type="submit"
                                     className="btn btn-primary me-3"
-                                    // onClick={this.handleUpdateCustomer(id)}
+                                // onClick={this.handleUpdateCustomer(id)}
                                 >
                                     Lưu
                                 </button>
@@ -651,7 +716,7 @@ export class Customer extends Component {
     }
 }
 
-export default Customer;
+export default Color(Customer);
 
 /*
 Các bước xây dựng tính năng phân trang
